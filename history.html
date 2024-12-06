@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>CycleTracker - Historique des Sorties</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .ride-history {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .ride-entry {
+            border-bottom: 1px solid #ddd;
+            padding: 15px 0;
+        }
+        .ride-entry:last-child {
+            border-bottom: none;
+        }
+        .ride-map {
+            height: 300px;
+            margin-top: 10px;
+            border-radius: 5px;
+            background-color: #e9e9e9;
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="index.html">Accueil</a>
+    <a href="history.html">Historique</a>
+</nav>
+
+<div class="container">
+    <h2>Historique des Sorties</h2>
+    <div id="rideHistory" class="ride-history"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const rideHistory = document.getElementById('rideHistory');
+        const rides = JSON.parse(localStorage.getItem('cycleTrackerRides') || '[]');
+
+        if (rides.length === 0) {
+            rideHistory.innerHTML = '<p>Aucune sortie enregistrée.</p>';
+            return;
+        }
+
+        rides.forEach((ride, index) => {
+            // Skip rides without positions
+            if (!ride.positions || ride.positions.length < 2) return;
+
+            const rideDate = new Date(ride.date);
+            const rideEntry = document.createElement('div');
+            rideEntry.classList.add('ride-entry');
+
+            // Create map container
+            const mapId = `ride-map-${index}`;
+            rideEntry.innerHTML = `
+                    <p><strong>Sortie ${index + 1}</strong></p>
+                    <p>Date: ${rideDate.toLocaleString()}</p>
+                    <p>Distance: ${ride.distance.toFixed(2)} km</p>
+                    <p>Durée: ${Math.floor(ride.duration / 60)} min ${Math.floor(ride.duration % 60)} sec</p>
+                    <p>Vitesse Moyenne: ${ride.avgSpeed.toFixed(1)} km/h</p>
+                    <div id="${mapId}" class="ride-map"></div>
+                `;
+
+            rideHistory.appendChild(rideEntry);
+
+            // Initialize map
+            const map = L.map(mapId).setView(ride.positions[0], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            // Add polyline for the route
+            const polyline = L.polyline(ride.positions, {color: 'blue'}).addTo(map);
+
+            // Fit map to the route
+            map.fitBounds(polyline.getBounds());
+            map.fitBounds(polyline.getBounds());
+
+            // Add start and end markers
+            if (ride.positions.length > 0) {
+                // Start marker
+                L.marker(ride.positions[0], {
+                    icon: L.divIcon({
+                        className: 'start-marker',
+                        html: '<div style="background-color: green; width: 12px; height: 12px; border-radius: 50%;"></div>',
+                        iconSize: [12, 12]
+                    })
+                }).addTo(map);
+
+                // End marker
+                L.marker(ride.positions[ride.positions.length - 1], {
+                    icon: L.divIcon({
+                        className: 'end-marker',
+                        html: '<div style="background-color: red; width: 12px; height: 12px; border-radius: 50%;"></div>',
+                        iconSize: [12, 12]
+                    })
+                }).addTo(map);
+            }
+        });
+    });
+</script>
+</body>
+</html>
